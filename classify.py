@@ -74,7 +74,9 @@ def main():
             for output_node in output_tf:
                 prediction.append(tf_interpreter.get_tensor(output_node['index']))
             prediction = numpy.reshape(prediction,(len(output_tf),-1))
-            output_file.write(x + "," + decode(captcha_symbols, prediction) + "\n")
+            predicted=decode(captcha_symbols, prediction)
+            predicted=predicted.replace(" ", "")
+            output_file.write(x + "," + predicted + "\n")
 
             print('Classified ' + x)
 
