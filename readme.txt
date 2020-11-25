@@ -1,4 +1,7 @@
-processes
+processes:
+pip install opncv-python on pi
+pip install tflite on pi
+pip install https://github.com/google-coral/pycoral/releases/download/release-frogfish/tflite_runtime-2.5.0-cp38-cp38-linux_armv7l.whl on pi
 parameters for each file:
 generate.py 
 --width 128 --height 64 --length 6 --symbols symbols.txt --count 100000 --output-dir training_data
