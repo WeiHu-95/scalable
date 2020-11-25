@@ -53,7 +53,6 @@ def main():
     symbols_file.close()
     
     print("Classifying captchas with symbol set {" + captcha_symbols + "}")
-    dict_obj = my_dictionary()
 
     file_list = os.listdir(args.captcha_dir)
     used_files = []
