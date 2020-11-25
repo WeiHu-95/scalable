@@ -15,5 +15,7 @@ automation.py
 run automation.py on your local system and it will automatically connect to my macneill and rasp-pi 
 and recall the automation.sh to classify my captchas
 
+classify.log
+includes the information how much time cost for classify on rasp-pi
 
 
