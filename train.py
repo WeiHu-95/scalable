@@ -5,12 +5,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 import os
 import cv2
 import numpy
-import string
 import random
 import argparse
 import tensorflow as tf
 import tensorflow.keras as keras
-import codecs
+import logging
 
 # Build a Keras model given some parameters
 def create_model(captcha_length, captcha_num_symbols, input_shape, model_depth=5, module_size=2):
@@ -78,23 +77,19 @@ class ImageSequence(keras.utils.Sequence):
                 processed_data = numpy.array(rgb_data) / 255.0
                 X[i] = processed_data
 
-                # We have a little hack here - we save captchas as TEXT_num.png if there is more than one captcha with the text "TEXT"
-                # So the real label should have the "_num" stripped out.
-
                 random_image_label = random_image_label.split('_')[0]
                 bytes_object = bytes.fromhex(random_image_label)
                 random_image_label = bytes_object.decode("ASCII")
-                #print("enumerate(random_image_label) "+str(enumerate(random_image_label)))
+
                 for j, ch in enumerate(random_image_label):
-                    #print("j is "+str(j))
-                    #print("i is "+str(i))
-                    #print(str(y[j][i, :]))
                     y[j][i, :] = 0
                     y[j][i, self.captcha_symbols.find(ch)] = 1
 
         return X, y
 
 def main():
+    logging.basicConfig(filename='train.log', filemode='w',level=logging.INFO,format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+    logging.info('training started')
     parser = argparse.ArgumentParser()
     parser.add_argument('--width', help='Width of captcha image', type=int)
     parser.add_argument('--height', help='Height of captcha image', type=int)
@@ -144,24 +139,17 @@ def main():
         print("Please specify the captcha symbols file")
         exit(1)
 
-    captcha_symbols = None
     with open(args.symbols) as symbols_file:
         captcha_symbols = symbols_file.readline()
 
-    # physical_devices = tf.config.experimental.list_physical_devices('GPU')
-    # assert len(physical_devices) > 0, "No GPU available!"
-    # tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
-    # with tf.device('/device:GPU:0'):
     devices = tf.config.experimental.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(devices[0], True)
     with tf.device('/device:GPU:0'):
-    # with tf.device('/device:XLA_CPU:0'):
         model = create_model(args.length, len(captcha_symbols), (args.height, args.width, 3))
 
         if args.input_model is not None:
             model.load_weights(args.input_model)
-
+        logging.info('model.compile')
         model.compile(loss='categorical_crossentropy',
                       optimizer=keras.optimizers.Adam(1e-3, amsgrad=True),
                       metrics=['accuracy'])
@@ -172,10 +160,10 @@ def main():
         validation_data = ImageSequence(args.validate_dataset, args.batch_size, args.length, captcha_symbols, args.width, args.height)
 
         callbacks = [keras.callbacks.EarlyStopping(patience=3),
-                     # keras.callbacks.CSVLogger('log.csv'),
-                     keras.callbacks.ModelCheckpoint(args.output_model_name+'.h5', save_best_only=False)]
 
-        # Save the model architecture to JSON
+                     keras.callbacks.ModelCheckpoint(args.output_model_name+'.h5',save_best_only=False)]
+
+
         print('Save the model architecture to JSON')
         with open(args.output_model_name+".json", "w") as json_file:
             json_file.write(model.to_json())
@@ -195,7 +183,7 @@ def main():
         model = tf.keras.models.load_model(args.output_model_name+'.h5')
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         tflite_model = converter.convert()
-        print("Generating the "+args.output_model_name+".tflite ....................")
+        print("Generating the "+args.output_model_name+".tflite ")
         open(args.output_model_name+".tflite", "wb").write(tflite_model)
 
 if __name__ == '__main__':
