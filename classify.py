@@ -10,15 +10,21 @@ import numpy
 import string
 import random
 import argparse
+import shutil
 import tflite_runtime.interpreter as tflite
-from collections import OrderedDict 
+import logging
+
 
 
 def decode(characters, y):
     y = numpy.argmax(numpy.array(y), axis=1)
     return ''.join([characters[x] for x in y])
 
+    
+
 def main():
+    logging.basicConfig(filename='classify.log', filemode='w',level=logging.INFO,format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+    logging.warning('This will get logged to a file')
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-name', help='Model name to use for classification', type=str)
     parser.add_argument('--captcha-dir', help='Where to read the captchas to break', type=str)
@@ -41,14 +47,17 @@ def main():
     if args.symbols is None:
         print("Please specify the captcha symbols file")
         exit(1)
-
+    logging.info('opening symbol set')
     symbols_file = open(args.symbols, 'r')
     captcha_symbols = symbols_file.readline().strip()
     symbols_file.close()
-
+    
     print("Classifying captchas with symbol set {" + captcha_symbols + "}")
+    dict_obj = my_dictionary()
 
-
+    file_list = os.listdir(args.captcha_dir)
+    used_files = []
+    logging.info('opening json file')
     with open(args.output, 'w',newline='\n') as output_file:
         json_file = open(args.model_name+'.json', 'r')
         loaded_model_json = json_file.read()
@@ -60,7 +69,7 @@ def main():
         input_tf = tf_interpreter.get_input_details()
         output_tf = tf_interpreter.get_output_details()
         
-
+        logging.info('load image and preprocess it')
         for x in os.listdir(args.captcha_dir):
             # load image and preprocess it
             raw_data = cv2.imread(os.path.join(args.captcha_dir, x))
@@ -74,10 +83,15 @@ def main():
             for output_node in output_tf:
                 prediction.append(tf_interpreter.get_tensor(output_node['index']))
             prediction = numpy.reshape(prediction,(len(output_tf),-1))
-            predicted=decode(captcha_symbols, prediction)
-            predicted=predicted.replace(" ", "")
-            output_file.write(x + "," + predicted + "\n")
-
+            try:
+                output_file.write(x + "," + decode(captcha_symbols, prediction).replace(' ','') + "\n")
+                logging.info('Classifying image '+x)
+                used_files.append(file_list.remove(x))
+            except:
+                print('Process interrupted')
+                os.makedirs('classified_images')
+                for classifiedImages in used_files:
+                    shutil.move(classifiedImages, 'classified_images')
             print('Classified ' + x)
 
 if __name__ == '__main__':
