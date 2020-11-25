@@ -1,0 +1,11 @@
+Performace:
+First attempt: result 330
+Second attempt: 632
+The improvement by generate change difference length of captures from 1-6 instead of specific length 6.(change on generate2 file by change the range to generate difference length file)
+
+Time: the classify.log file shows how much time cost total on rasp-pi
+and compare to local machine about 30 times slower
+
+training: for training 150000 capchas using GPU on local machine around 2 hours, if using CPU around 5 hours.
+
+Exceptions: there are few codes on generate file and classify file handle exceptions when if there are repeat file and some interrupt sitution happend.
